@@ -1,129 +1,111 @@
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
+from flask import Flask, render_template, request, jsonify
 import subprocess
 import os
-import tempfile
-import time
+import uuid
 
-app = Flask(__name__, static_folder='static', static_url_path='')
-CORS(app)
+app = Flask(__name__)
 
-@app.route('/')
-def serve_frontend():
-    return send_from_directory(app.static_folder, 'index.html')
+TEMP_DIR = "temp_code"
+os.makedirs(TEMP_DIR, exist_ok=True)
 
-@app.route('/api/run', methods=['POST'])
+@app.route("/")
+def index():
+    return render_template("index.html")
+
+@app.route("/run", methods=["POST"])
 def run_code():
     data = request.get_json()
-    language = data.get('language', '').lower()
-    code = data.get('code', '')
+    code = data.get("code", "")
+    language = data.get("language", "python")
+    
+    # Input handling: Always ensure a newline so input() doesn't throw EOFError on empty inputs
+    raw_input = data.get("input", "")
+    user_input = raw_input + "\n" if raw_input else "\n"
 
-    if not code:
-        return jsonify({'status': 'ERROR', 'output': 'No code provided.'}), 400
-
-    start_time = time.time()
-
+    file_id = str(uuid.uuid4())
+    
     try:
-        if language == 'cpp':
-            result, status = execute_cpp(code)
-        elif language == 'java':
-            result, status = execute_java(code)
-        elif language == 'python':
-            result, status = execute_python(code)
+        if language == "python":
+            file_path = os.path.join(TEMP_DIR, f"{file_id}.py")
+            with open(file_path, "w") as f:
+                f.write(code)
+            
+            process = subprocess.run(
+                ["python3", file_path],
+                input=user_input,
+                text=True,
+                capture_output=True,
+                timeout=10
+            )
+            output = process.stdout if process.returncode == 0 else process.stderr
+
+        elif language == "cpp":
+            file_path = os.path.join(TEMP_DIR, f"{file_id}.cpp")
+            exe_path = os.path.join(TEMP_DIR, f"{file_id}.out")
+            with open(file_path, "w") as f:
+                f.write(code)
+            
+            compile_process = subprocess.run(
+                ["g++", file_path, "-o", exe_path],
+                capture_output=True,
+                text=True
+            )
+            
+            if compile_process.returncode != 0:
+                output = compile_process.stderr
+            else:
+                run_process = subprocess.run(
+                    [exe_path],
+                    input=user_input,
+                    text=True,
+                    capture_output=True,
+                    timeout=10
+                )
+                output = run_process.stdout if run_process.returncode == 0 else run_process.stderr
+                if os.path.exists(exe_path):
+                    os.remove(exe_path)
+
+        elif language == "java":
+            class_name = f"Main_{file_id.replace('-', '_')}"
+            formatted_code = code.replace("class Main", f"class {class_name}")
+            file_path = os.path.join(TEMP_DIR, f"{class_name}.java")
+            
+            with open(file_path, "w") as f:
+                f.write(formatted_code)
+            
+            compile_process = subprocess.run(
+                ["javac", file_path],
+                capture_output=True,
+                text=True
+            )
+            
+            if compile_process.returncode != 0:
+                output = compile_process.stderr
+            else:
+                run_process = subprocess.run(
+                    ["java", "-cp", TEMP_DIR, class_name],
+                    input=user_input,
+                    text=True,
+                    capture_output=True,
+                    timeout=10
+                )
+                output = run_process.stdout if run_process.returncode == 0 else run_process.stderr
+                class_file = os.path.join(TEMP_DIR, f"{class_name}.class")
+                if os.path.exists(class_file):
+                    os.remove(class_file)
+
         else:
-            return jsonify({'status': 'ERROR', 'output': 'Unsupported language.'}), 400
+            output = "Unsupported Language"
 
-        exec_time = int((time.time() - start_time) * 1000)
-        return jsonify({
-            'status': status,
-            'output': result,
-            'executionTime': exec_time
-        })
-
-    except Exception as e:
-        return jsonify({'status': 'ERROR', 'output': str(e)}), 500
-
-
-def execute_cpp(code):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        source_path = os.path.join(temp_dir, "main.cpp")
-        exec_path = os.path.join(temp_dir, "main.exe" if os.name == 'nt' else "main")
-
-        with open(source_path, "w") as f:
-            f.write(code)
-
-        # Compile
-        compile_process = subprocess.run(
-            ["g++", source_path, "-o", exec_path],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-
-        if compile_process.returncode != 0:
-            return compile_process.stderr, "COMPILATION_ERROR"
-
-        # Execute
-        try:
-            run_process = subprocess.run(
-                [exec_path],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            return run_process.stdout or run_process.stderr, "SUCCESS"
-        except subprocess.TimeoutExpired:
-            return "Execution Timed Out (Limit: 5 Seconds)", "TIME_LIMIT_EXCEEDED"
-
-
-def execute_java(code):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        source_path = os.path.join(temp_dir, "Main.java")
-
-        with open(source_path, "w") as f:
-            f.write(code)
-
-        # Compile
-        compile_process = subprocess.run(
-            ["javac", source_path],
-            capture_output=True,
-            text=True,
-            timeout=10
-        )
-
-        if compile_process.returncode != 0:
-            return compile_process.stderr, "COMPILATION_ERROR"
-
-        # Execute
-        try:
-            run_process = subprocess.run(
-                ["java", "-cp", temp_dir, "Main"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            return run_process.stdout or run_process.stderr, "SUCCESS"
-        except subprocess.TimeoutExpired:
-            return "Execution Timed Out (Limit: 5 Seconds)", "TIME_LIMIT_EXCEEDED"
-
-
-def execute_python(code):
-    try:
-        run_process = subprocess.run(
-            ["python", "-c", code],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        output = run_process.stdout if run_process.returncode == 0 else run_process.stderr
-        return output, "SUCCESS" if run_process.returncode == 0 else "RUNTIME_ERROR"
     except subprocess.TimeoutExpired:
-        return "Execution Timed Out (Limit: 5 Seconds)", "TIME_LIMIT_EXCEEDED"
+        output = "Error: Code Execution Timed Out"
+    except Exception as e:
+        output = str(e)
+    finally:
+        if 'file_path' in locals() and os.path.exists(file_path):
+            os.remove(file_path)
 
+    return jsonify({"output": output})
 
-if __name__ == '__main__':
-    print("--------------------------------------------------")
-    print(" Python Code Evaluator Server Started!")
-    print(" Local Access: http://127.0.0.1:5000")
-    print("--------------------------------------------------")
-    app.run(debug=True, port=5000)
+if __name__ == "__main__":
+    app.run(debug=True)
