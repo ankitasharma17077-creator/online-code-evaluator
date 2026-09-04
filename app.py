@@ -17,18 +17,31 @@ def run_code():
     data = request.get_json()
     code = data.get("code", "")
     language = data.get("language", "python")
-    
-    # Input handling: Always ensure a newline so input() doesn't throw EOFError on empty inputs
-    raw_input = data.get("input", "")
-    user_input = raw_input + "\n" if raw_input else "\n"
+    user_input = data.get("input", "")
 
     file_id = str(uuid.uuid4())
     
     try:
         if language == "python":
+            # Safe wrapper to catch EOFError automatically for input()
+            safe_code = f"""import sys
+
+def _safe_input(prompt=""):
+    try:
+        line = sys.stdin.readline()
+        if not line:
+            return ""
+        return line.rstrip("\\r\\n")
+    except Exception:
+        return ""
+
+input = _safe_input
+
+{code}
+"""
             file_path = os.path.join(TEMP_DIR, f"{file_id}.py")
             with open(file_path, "w") as f:
-                f.write(code)
+                f.write(safe_code)
             
             process = subprocess.run(
                 ["python3", file_path],
