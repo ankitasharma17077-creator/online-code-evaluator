@@ -3,37 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Python Online Code Evaluator</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Online Code Evaluator</title>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <header>
-        <h1>Online Coding Practice & Evaluation System (Python Core)</h1>
-    </header>
+    <div class="container">
+        <h1>Online Code Evaluator</h1>
+        
+        <div class="controls">
+            <label for="language">Language:</label>
+            <select id="language">
+                <option value="python">Python</option>
+                <option value="cpp">C++</option>
+                <option value="java">Java</option>
+            </select>
+            <button id="run-btn" onclick="runCode()">Run Code</button>
+        </div>
 
-    <main class="container">
         <div class="editor-section">
-            <div class="controls">
-                <label for="languageSelect">Language:</label>
-                <select id="languageSelect">
-                    <option value="python">Python</option>
-                    <option value="cpp">C++</option>
-                    <option value="java">Java</option>
-                </select>
-                <button id="runBtn" onclick="submitCode()">Run Code</button>
-            </div>
-            <textarea id="codeEditor" spellcheck="false"></textarea>
+            <h3>Source Code</h3>
+            <textarea id="code" placeholder="Write your code here..."></textarea>
         </div>
 
-        <div class="output-section">
-            <h2>Execution Output</h2>
-            <div class="status-bar">
-                Status: <span id="statusText">Ready</span> | Time: <span id="timeText">0 ms</span>
+        <div class="io-section">
+            <div class="input-box">
+                <h3>Custom Input</h3>
+                <textarea id="input" placeholder="Enter input here..."></textarea>
             </div>
-            <pre id="outputBox">Click "Run Code" to execute code.</pre>
+            <div class="output-box">
+                <h3>Output</h3>
+                <pre id="output">Output will appear here...</pre>
+            </div>
         </div>
-    </main>
+    </div>
 
-    <script src="app.js"></script>
+    <script src="/static/app.js"></script>
 </body>
 </html>
