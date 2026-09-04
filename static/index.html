@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python Online Code Evaluator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Online Coding Practice & Evaluation System (Python Core)</h1>
+    </header>
+
+    <main class="container">
+        <div class="editor-section">
+            <div class="controls">
+                <label for="languageSelect">Language:</label>
+                <select id="languageSelect">
+                    <option value="python">Python</option>
+                    <option value="cpp">C++</option>
+                    <option value="java">Java</option>
+                </select>
+                <button id="runBtn" onclick="submitCode()">Run Code</button>
+            </div>
+            <textarea id="codeEditor" spellcheck="false"></textarea>
+        </div>
+
+        <div class="output-section">
+            <h2>Execution Output</h2>
+            <div class="status-bar">
+                Status: <span id="statusText">Ready</span> | Time: <span id="timeText">0 ms</span>
+            </div>
+            <pre id="outputBox">Click "Run Code" to execute code.</pre>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
