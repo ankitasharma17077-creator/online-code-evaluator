@@ -3,7 +3,7 @@ import subprocess
 import os
 import uuid
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='static', static_folder='static')
 
 TEMP_DIR = "temp_code"
 os.makedirs(TEMP_DIR, exist_ok=True)
@@ -23,7 +23,6 @@ def run_code():
     
     try:
         if language == "python":
-            # Safe wrapper to catch EOFError automatically for input()
             safe_code = f"""import sys
 
 def _safe_input(prompt=""):
